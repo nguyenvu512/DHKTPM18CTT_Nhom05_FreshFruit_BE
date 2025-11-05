@@ -15,4 +15,5 @@ public class Voucher {
     String name;
     String description;
     double discount;
+    int quantity;
 }
