@@ -1,25 +1,20 @@
-package com.example.fruitshop_be.entity;
+package com.example.fruitshop_be.dto.response;
 
 import com.example.fruitshop_be.enums.Provider;
 import com.example.fruitshop_be.enums.Role;
-import jakarta.persistence.*;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-@Entity
-@FieldDefaults(level = AccessLevel.PRIVATE)
 @Data
-public class Account {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class AccountResponse {
     String id;
     String username;
-    String password;
     @Enumerated(EnumType.STRING)
     Provider provider;
     @Enumerated(EnumType.STRING)
     Role role;
-    @OneToOne
-    Customer customer;
 }
