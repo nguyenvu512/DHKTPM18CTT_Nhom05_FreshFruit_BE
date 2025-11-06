@@ -37,9 +37,7 @@ public class CategoryService {
 
     }
     public void deleteCategory(String id){
-        Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có id: " + id));
-        categoryRepository.delete(category);
+       categoryRepository.deleteById(id);
     }
 
 }
