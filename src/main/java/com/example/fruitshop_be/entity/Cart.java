@@ -19,6 +19,6 @@ public class Cart {
     Customer customer;
     LocalDateTime createAt;
     LocalDateTime updateAt;
-    @OneToMany(mappedBy ="cart")
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     List<CartItem> cartItems;
 }
