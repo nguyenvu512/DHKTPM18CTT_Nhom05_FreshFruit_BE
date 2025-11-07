@@ -3,6 +3,7 @@ package com.example.fruitshop_be.redis;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 @Service
 public class RedisService {
-    StringRedisTemplate blacklistRedisTemplate;
+    RedisTemplate<String,String> blacklistRedisTemplate;
     static final String PREFIX = "blacklist:";
     static final long BLACKLIST_TTL_MILLIS = 3600_000; // 1 giờ
 
