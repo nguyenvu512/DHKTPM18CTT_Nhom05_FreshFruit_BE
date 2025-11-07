@@ -2,18 +2,23 @@ package com.example.fruitshop_be.service;
 
 import com.example.fruitshop_be.dto.request.AuthenticationRequest;
 import com.example.fruitshop_be.dto.request.IntrospectRequest;
+import com.example.fruitshop_be.dto.request.LogoutRequest;
 import com.example.fruitshop_be.dto.response.AuthenticationResponse;
 import com.example.fruitshop_be.dto.response.IntrospectResponse;
 import com.example.fruitshop_be.entity.Account;
 import com.example.fruitshop_be.enums.ErrorCode;
 import com.example.fruitshop_be.enums.TokenType;
 import com.example.fruitshop_be.exception.AppException;
+import com.example.fruitshop_be.redis.RedisService;
 import com.example.fruitshop_be.repository.AccountRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,6 +42,8 @@ public class AuthenticationService {
     String SECRET_KEY;
     AccountRepository accountRepository;
     PasswordEncoder passwordEncoder;
+    RedisService redisService;
+
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         Account account = accountRepository.findByUsername(request.getUsername());
         if (account == null) {
@@ -47,10 +54,11 @@ public class AuthenticationService {
             throw new AppException(ErrorCode.LOGIN_FAILED);
         }
         return AuthenticationResponse.builder()
-                .accessToken(generateToken(account,TokenType.ACCESS))
-                .refreshToken(generateToken(account,TokenType.REFRESH))
+                .accessToken(generateToken(account, TokenType.ACCESS))
+                .refreshToken(generateToken(account, TokenType.REFRESH))
                 .build();
     }
+
     public String generateToken(Account account, TokenType tokenType) {
         JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS256);
         JWTClaimsSet jwtClaimNames = new JWTClaimsSet.Builder()
@@ -59,9 +67,10 @@ public class AuthenticationService {
                 .issueTime(new Date())
                 .expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()))
                 .jwtID(UUID.randomUUID().toString())
-                .claim("scope","ROLE_"+account.getRole().toString())
+                .claim("scope", "ROLE_" + account.getRole().toString())
                 .claim("customerID", account.getCustomer().getId())
-                .claim("tokenType",tokenType.toString())
+                .claim("customerName", account.getCustomer().getName())
+                .claim("tokenType", tokenType.toString())
                 .build();
         Payload payload = new Payload(jwtClaimNames.toJSONObject());
         JWSObject jwsObject = new JWSObject(jwsHeader, payload);
@@ -72,27 +81,28 @@ public class AuthenticationService {
             throw new RuntimeException(e);
         }
     }
-    public IntrospectResponse introspect(IntrospectRequest resquest) throws JOSEException, ParseException {
-        var token = resquest.getToken();
-        boolean valid=true;
-        try {
-            verifyAccessToken(token);
-        }catch (AppException e){
-            valid=false;
-        }
-        return  IntrospectResponse.builder()
-                .isValid(valid)
+
+    public IntrospectResponse introspect(IntrospectRequest request) throws JOSEException, ParseException, AppException {
+        var token = request.getToken();
+        verifyAccessToken(token);
+
+        return IntrospectResponse.builder()
+                .isValid(true)
                 .build();
     }
-    private SignedJWT verifySignature(String token) throws ParseException, JOSEException {
-        SignedJWT signedJWT = SignedJWT.parse(token);
-        JWSVerifier jwsVerifier = new MACVerifier(SECRET_KEY.getBytes());
 
+    private SignedJWT verifySignature(String token) throws ParseException, JOSEException {
+        SignedJWT signedJWT = parseToken(token);
+        JWSVerifier jwsVerifier = new MACVerifier(SECRET_KEY.getBytes());
+        if (redisService.isBlacklisted(signedJWT.getJWTClaimsSet().getJWTID())) {
+            throw new AppException(ErrorCode.INVALIDATED_TOKEN);
+        }
         if (!signedJWT.verify(jwsVerifier)) {
             throw new AppException(ErrorCode.INVALID_TOKEN);
         }
         return signedJWT;
     }
+
     public SignedJWT verifyAccessToken(String token) throws ParseException, JOSEException {
         SignedJWT signedJWT = verifySignature(token);
 
@@ -107,6 +117,7 @@ public class AuthenticationService {
 
         return signedJWT;
     }
+
     public SignedJWT verifyRefreshToken(String token) throws ParseException, JOSEException {
         SignedJWT signedJWT = verifySignature(token);
 
@@ -120,6 +131,31 @@ public class AuthenticationService {
         }
 
         return signedJWT;
+    }
+
+    public void logout(LogoutRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) throws ParseException {
+        SignedJWT signedJWT = parseToken(request.getToken());
+        String jti = signedJWT.getJWTClaimsSet().getJWTID();
+
+        redisService.blacklistToken(jti);
+
+        Cookie[] cookies = httpRequest.getCookies();
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    cookie.setValue(null);
+                    cookie.setMaxAge(0);
+                    cookie.setPath("/");
+                    cookie.setHttpOnly(true);
+                    httpResponse.addCookie(cookie);
+                }
+            }
+        }
+    }
+
+    private SignedJWT parseToken(String token) throws ParseException {
+        return SignedJWT.parse(token);
     }
 
 

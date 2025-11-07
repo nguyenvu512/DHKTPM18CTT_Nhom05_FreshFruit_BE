@@ -2,8 +2,14 @@ package com.example.fruitshop_be.controller;
 
 import com.example.fruitshop_be.dto.ApiResponse;
 import com.example.fruitshop_be.dto.request.AuthenticationRequest;
+import com.example.fruitshop_be.dto.request.IntrospectRequest;
+import com.example.fruitshop_be.dto.request.LogoutRequest;
 import com.example.fruitshop_be.dto.response.AuthenticationResponse;
+import com.example.fruitshop_be.dto.response.IntrospectResponse;
 import com.example.fruitshop_be.service.AuthenticationService;
+import com.nimbusds.jose.JOSEException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -11,6 +17,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.text.ParseException;
 
 @RestController
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -35,6 +43,19 @@ public class AuthenticationController {
                 .body(ApiResponse.<AuthenticationResponse>builder()
                         .result(response)
                         .build());
+    }
+    @PostMapping("/introspect")
+    public ApiResponse<IntrospectResponse> introspect(@RequestBody IntrospectRequest request) throws ParseException, JOSEException {
+        return ApiResponse.<IntrospectResponse>builder()
+                .result(authenticationService.introspect(request))
+                .build();
+    }
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@RequestBody LogoutRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResonse) throws ParseException, JOSEException {
+        authenticationService.logout(request, httpRequest, httpResonse);
+        return ApiResponse.<Void>builder()
+                .message("Logout successful")
+                .build();
     }
 }
 
