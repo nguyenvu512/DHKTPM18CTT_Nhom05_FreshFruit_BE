@@ -26,12 +26,10 @@ public class CloudinaryService {
         try {
             Map uploadResult = cloudinary.uploader().upload(file.getBytes(),
                     ObjectUtils.asMap("folder", "fruitshop_images"));
-
             ProductImage image = new ProductImage();
             image.setUrl(uploadResult.get("url").toString());
             image.setPublicId(uploadResult.get("public_id").toString());
             image.setProduct(product);
-
             return imageRepository.save(image);
         } catch (IOException e) {
             throw new RuntimeException("Upload file failed: " + e.getMessage());
