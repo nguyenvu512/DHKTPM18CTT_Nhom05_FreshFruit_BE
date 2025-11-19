@@ -9,6 +9,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,21 +29,16 @@ public class CustomerController {
                 .build();
     }
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<CustomerResponse>> getAllCustomers(){
         return ApiResponse.<List<CustomerResponse>>builder()
                 .result(customerService.getAllCustomers())
                 .build();
     }
-    @PutMapping("{id}")
+    @PutMapping("/{id}")
     public ApiResponse<CustomerResponse> updateCustomer(@PathVariable String id, @RequestBody CustomerUpdateRequest request){
         return ApiResponse.<CustomerResponse>builder()
                 .result(customerService.updateCustomer(id, request))
                 .build();
-    }
-
-    @GetMapping("/redis-test")
-    public String test() {
-        template.opsForValue().set("key", "Hello Redis!!!");
-        return template.opsForValue().get("key");
     }
 }
