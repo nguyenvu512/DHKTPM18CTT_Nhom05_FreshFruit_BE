@@ -16,6 +16,7 @@ public enum ErrorCode {
     EXPIRED_TOKEN(1406, "Token is expired", HttpStatus.UNAUTHORIZED),
     INVALID_TOKEN_TYPE(1407, "Invalid token type", HttpStatus.UNAUTHORIZED),
     INVALIDATED_TOKEN(1408, "Token has been invalidated", HttpStatus.UNAUTHORIZED),
+    FORBIDDEN(1403, "Access Is Not Allowed", HttpStatus.FORBIDDEN),
     LOGIN_FAILED(1401, "Invalid username or password", HttpStatus.UNAUTHORIZED);
     int code;
     String message;

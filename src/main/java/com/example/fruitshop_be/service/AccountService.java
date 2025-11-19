@@ -1,6 +1,9 @@
 package com.example.fruitshop_be.service;
 
 import com.example.fruitshop_be.dto.response.AccountResponse;
+import com.example.fruitshop_be.entity.Account;
+import com.example.fruitshop_be.enums.ErrorCode;
+import com.example.fruitshop_be.exception.AppException;
 import com.example.fruitshop_be.mapper.AccountMapper;
 import com.example.fruitshop_be.repository.AccountRepository;
 import lombok.AccessLevel;
@@ -19,5 +22,8 @@ public class AccountService {
     AccountMapper accountMapper;
     public List<AccountResponse> getAllAccounts() {
         return accountRepository.findAll().stream().map(accountMapper::toAccountResponse).collect(Collectors.toList());
+    }
+    public Account getAccountByUserName(String username) {
+        return accountRepository.findByUsername(username);
     }
 }
