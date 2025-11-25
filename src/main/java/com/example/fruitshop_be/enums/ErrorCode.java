@@ -21,4 +21,5 @@ public enum ErrorCode {
     int code;
     String message;
     HttpStatus httpStatus;
+
 }

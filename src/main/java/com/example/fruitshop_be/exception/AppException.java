@@ -2,13 +2,17 @@ package com.example.fruitshop_be.exception;
 
 import com.example.fruitshop_be.enums.ErrorCode;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-@Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@AllArgsConstructor
 public class AppException extends RuntimeException {
     ErrorCode errorCode;
+    public AppException(ErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+    }
+
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
 }
