@@ -34,13 +34,15 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    private static final String[] END_POINTS = {"/auth/login","/auth/introspect","/auth/refresh"};
+    private static final String[] END_POINTS = {"/auth/login","/auth/introspect","/auth/refresh","/customer"};
     @Autowired
     private CustomerJwtDecoder customerJwtDecoder;
     @Autowired
     private  CustomAccessDeniedHandler customAccessDeniedHandler;
     @Autowired
     private JwtVerifyFilter jwtVerifyFilter;
+    @Autowired
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -48,13 +50,16 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, END_POINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/product").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Thêm filter custom trước BearerTokenAuthenticationFilter
                 .addFilterBefore(jwtVerifyFilter, BearerTokenAuthenticationFilter.class)
                 .oauth2ResourceServer(oauth2 ->
                         oauth2
-                                .jwt(jwt -> jwt.decoder(customerJwtDecoder))
+                                .jwt(jwt -> jwt
+                                        .decoder(customerJwtDecoder))
+                                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
                 .exceptionHandling(exceptionHandling ->
                         exceptionHandling.accessDeniedHandler(customAccessDeniedHandler))
