@@ -24,8 +24,8 @@ public enum ErrorCode {
     ORDER_QUANTITY_INVALID(2405, "Quantity must be > 0", HttpStatus.BAD_REQUEST),
     PRODUCT_OUT_OF_STOCK(2501, "Product is out of stock", HttpStatus.BAD_REQUEST),
     PRODUCT_INSUFFICIENT_QUANTITY(2502, "Not enough product inventory", HttpStatus.BAD_REQUEST),
-    VOUCHER_OUT_OF_STOCK(2503, "Voucher is out of stock", HttpStatus.BAD_REQUEST);
-
+    VOUCHER_OUT_OF_STOCK(2503, "Voucher is out of stock", HttpStatus.BAD_REQUEST),
+    FORBIDDEN(1403, "Access Is Not Allowed", HttpStatus.FORBIDDEN);
     int code;
     String message;
     HttpStatus httpStatus;

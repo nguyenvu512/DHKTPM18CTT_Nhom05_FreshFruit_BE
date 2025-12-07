@@ -1,15 +1,15 @@
 package com.example.fruitshop_be.dto.request;
 
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List;
-
 @Data
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CartUpdateRequest {
-    String cartId;
+public class CartItemUpdateRequest {
+    String customerId;
     String productId;
-    Integer quantity;
+    int quantity;
 }

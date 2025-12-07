@@ -1,8 +1,7 @@
 package com.example.fruitshop_be.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 @Entity
@@ -14,11 +13,15 @@ public class CartItem {
     @Id
     @ManyToOne
     @JoinColumn(name = "cart_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     Cart cart;
 
     @Id
     @ManyToOne
     @JoinColumn(name = "product_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     Product product;
 
     int quantity;

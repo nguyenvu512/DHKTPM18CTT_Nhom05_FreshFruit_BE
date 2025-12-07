@@ -5,12 +5,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List;
-
 @Data
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CartCreateRequest {
+public class CartAddRequest {
     String customerId;
-    List<CartItemRequest> cartItems;
+    String productId;
+    int quantity;
 }

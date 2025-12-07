@@ -1,146 +1,155 @@
 package com.example.fruitshop_be.service;
 
-import com.example.fruitshop_be.dto.request.CartCreateRequest;
-import com.example.fruitshop_be.dto.request.CartUpdateRequest;
-import com.example.fruitshop_be.dto.request.CartItemRequest;
+import com.example.fruitshop_be.dto.request.CartAddRequest;
+import com.example.fruitshop_be.dto.request.CartItemUpdateRequest;
 import com.example.fruitshop_be.dto.response.CartResponse;
-import com.example.fruitshop_be.entity.*;
-import com.example.fruitshop_be.enums.ErrorCode;
-import com.example.fruitshop_be.exception.AppException;
+import com.example.fruitshop_be.entity.Cart;
+import com.example.fruitshop_be.entity.CartItem;
+import com.example.fruitshop_be.entity.CartItemId;
+import com.example.fruitshop_be.entity.Customer;
+import com.example.fruitshop_be.entity.Product;
 import com.example.fruitshop_be.mapper.CartMapper;
-import com.example.fruitshop_be.repository.*;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
+import com.example.fruitshop_be.repository.CartItemRepository;
+import com.example.fruitshop_be.repository.CartRepository;
+import com.example.fruitshop_be.repository.CustomerRepository;
+import com.example.fruitshop_be.repository.ProductRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 @Service
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@RequiredArgsConstructor
+@Transactional
 public class CartService {
 
-    CartRepository cartRepository;
-    CartItemRepository cartItemRepository;
-    CustomerRepository customerRepository;
-    ProductRepository productRepository;
-    CartMapper cartMapper;
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final ProductRepository productRepository;
+    private final CustomerRepository customerRepository;
+    private final CartMapper cartMapper;
 
-    public CartResponse createCart(CartCreateRequest request) {
-        Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-
-        Cart cart = new Cart();
-        cart.setCustomer(customer);
-        cart.setCreateAt(LocalDateTime.now());
-        cart.setUpdateAt(LocalDateTime.now());
-
-        List<CartItem> cartItems = request.getCartItems().stream().map(itemReq -> {
-            Product product = productRepository.findById(itemReq.getProductID())
-                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-            CartItem cartItem = new CartItem();
-            cartItem.setCart(cart);
-            cartItem.setProduct(product);
-            cartItem.setQuantity(itemReq.getQuantity());
-            return cartItem;
-        }).collect(Collectors.toList());
-
-        cart.setCartItems(cartItems);
-        cartRepository.save(cart);
-        return cartMapper.toCartResponse(cart);
+    public CartService(CartRepository cartRepository,
+                       CartItemRepository cartItemRepository,
+                       ProductRepository productRepository,
+                       CustomerRepository customerRepository,
+                       CartMapper cartMapper) {
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.productRepository = productRepository;
+        this.customerRepository = customerRepository;
+        this.cartMapper = cartMapper;
     }
 
+    // Lấy giỏ hàng theo customer
     public CartResponse getCartByCustomer(String customerId) {
-        Cart cart = cartRepository.findByCustomer_Id(customerId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        Cart cart = cartRepository.findByCustomerId(customerId).orElse(null);
+        if (cart == null) return null;
         return cartMapper.toCartResponse(cart);
     }
 
-    public void clearCart(String customerId) {
-        Cart cart = cartRepository.findByCustomer_Id(customerId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-        cart.getCartItems().clear();
-        cart.setUpdateAt(LocalDateTime.now());
-        cartRepository.save(cart);
-    }
+    // Thêm sản phẩm vào cart
+    public CartResponse addToCart(CartAddRequest request) {
+        // Lấy customer từ DB
+        Customer customer = customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-    public CartResponse addItemToCartByCartId(String cartId, CartItemRequest request) {
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        // Lấy cart nếu có
+        Cart cart = cartRepository.findByCustomerId(request.getCustomerId()).orElse(null);
 
-        Product product = productRepository.findById(request.getProductID())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-
-        if (cart.getCartItems() == null) {
-            cart.setCartItems(new java.util.ArrayList<>());
+        // Nếu chưa có cart, tạo mới
+        if (cart == null) {
+            cart = new Cart();
+            cart.setCustomer(customer);
         }
 
-        CartItem existingItem = cart.getCartItems().stream()
-                .filter(item -> item.getProduct().getId().equals(product.getId()))
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        if (cart.getCartItems() == null) cart.setCartItems(new ArrayList<>());
+
+        // Kiểm tra sản phẩm đã có trong cart chưa
+        CartItem existing = cart.getCartItems().stream()
+                .filter(ci -> ci.getProduct().getId().equals(request.getProductId()))
                 .findFirst()
                 .orElse(null);
 
-        if (existingItem != null) {
-            existingItem.setQuantity(existingItem.getQuantity() + request.getQuantity());
+        if (existing != null) {
+            existing.setQuantity(existing.getQuantity() + request.getQuantity());
         } else {
-            CartItem newItem = new CartItem();
-            newItem.setCart(cart);
-            newItem.setProduct(product);
-            newItem.setQuantity(request.getQuantity());
-            cart.getCartItems().add(newItem);
+            CartItem item = new CartItem();
+            item.setCart(cart);
+            item.setProduct(product);
+            item.setQuantity(request.getQuantity());
+            cart.getCartItems().add(item);
         }
 
-        cart.setUpdateAt(LocalDateTime.now());
-        cartRepository.save(cart);
+        cartRepository.save(cart); // Lưu cart -> tạo cartId
         return cartMapper.toCartResponse(cart);
     }
 
-    // ✅ Lấy giỏ hàng theo cartId
-    public CartResponse getCartById(String cartId) {
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-        return cartMapper.toCartResponse(cart);
-    }
+    // Cập nhật số lượng
+    public CartResponse updateCartItem(CartItemUpdateRequest request) {
+        // 1. Lấy cart theo customerId
+        Cart cart = cartRepository.findByCustomerId(request.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
 
-    // ✅ Xóa sản phẩm theo cartId
-    public CartResponse removeItemByCartId(String cartId, String productId) {
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-
-        cart.getCartItems().removeIf(item -> item.getProduct().getId().equals(productId));
-        cart.setUpdateAt(LocalDateTime.now());
-        cartRepository.save(cart);
-
-        return cartMapper.toCartResponse(cart);
-    }
-
-    // ✅ Cập nhật số lượng sản phẩm trong giỏ hàng theo cartId + productId
-    public CartResponse updateItemQuantity(CartUpdateRequest request) {
-        // Lấy giỏ hàng theo cartId
-        Cart cart = cartRepository.findById(request.getCartId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-
-        // Tìm item trong giỏ
+        // 2. Tìm CartItem theo productId trong cart
         CartItem item = cart.getCartItems().stream()
-                .filter(i -> i.getProduct().getId().equals(request.getProductId()))
+                .filter(ci -> ci.getProduct().getId().equals(request.getProductId()))
                 .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+                .orElseThrow(() -> new RuntimeException("CartItem not found"));
 
-        // Cập nhật số lượng
+        // 3. Cập nhật quantity
         item.setQuantity(request.getQuantity());
 
-        // Cập nhật thời gian sửa giỏ
-        cart.setUpdateAt(LocalDateTime.now());
-
-        // Lưu giỏ hàng
+        // 4. Lưu cart
         cartRepository.save(cart);
 
-        // Trả về CartResponse
+        // 5. Trả về response
         return cartMapper.toCartResponse(cart);
     }
 
+
+    // Xóa sản phẩm khỏi cart
+    public CartResponse removeItem(String customerId, String productId) {
+        // 1. Lấy cart theo customerId
+        Cart cart = cartRepository.findByCustomerId(customerId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        // 2. Tìm CartItem theo productId
+        CartItem item = cart.getCartItems().stream()
+                .filter(ci -> ci.getProduct().getId().equals(productId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("CartItem not found"));
+
+        // 3. Xóa CartItem khỏi cart
+        cart.getCartItems().remove(item);
+        cartItemRepository.delete(item);
+
+        // 4. Lưu cart (không bắt buộc nếu cascade)
+        cartRepository.save(cart);
+
+        // 5. Trả về response
+        return cartMapper.toCartResponse(cart);
+    }
+
+    // Xóa tất cả sản phẩm trong cart
+    public CartResponse clearCart(String customerId) {
+        // 1. Lấy cart theo customerId
+        Cart cart = cartRepository.findByCustomerId(customerId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        // 2. Xóa tất cả CartItem
+        if (cart.getCartItems() != null && !cart.getCartItems().isEmpty()) {
+            cartItemRepository.deleteAll(cart.getCartItems());
+            cart.getCartItems().clear();
+        }
+
+        // 3. Lưu cart (nếu cần)
+        cartRepository.save(cart);
+
+        // 4. Trả về response rỗng
+        return cartMapper.toCartResponse(cart);
+    }
 
 }
