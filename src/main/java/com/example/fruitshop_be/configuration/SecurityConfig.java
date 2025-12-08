@@ -34,7 +34,7 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    private static final String[] END_POINTS = {"/auth/login","/auth/introspect","/auth/refresh","/customer"};
+    private static final String[] END_POINTS = {"/auth/login","/auth/introspect","/auth/refresh","/customer","/auth/forget-password"};
     @Autowired
     private CustomerJwtDecoder customerJwtDecoder;
     @Autowired
