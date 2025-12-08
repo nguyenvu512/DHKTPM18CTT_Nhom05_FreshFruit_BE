@@ -52,4 +52,7 @@ public class CustomerService {
         customerMapper.updateCustomer(customer, request);
         return customerMapper.toCustomerResponse(customerRepository.save(customer));
     }
+    public CustomerResponse getInfoById(String id) {
+        return customerMapper.toCustomerResponse(customerRepository.findById(id).orElseThrow(()-> new AppException(ErrorCode.NOT_FOUND)));
+    }
 }

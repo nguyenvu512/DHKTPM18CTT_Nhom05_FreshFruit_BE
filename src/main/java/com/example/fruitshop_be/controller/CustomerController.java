@@ -9,6 +9,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,9 +37,17 @@ public class CustomerController {
                 .build();
     }
     @PutMapping("/{id}")
+    @PostAuthorize("returnObject.result.email == authentication.name")
     public ApiResponse<CustomerResponse> updateCustomer(@PathVariable String id, @RequestBody CustomerUpdateRequest request){
         return ApiResponse.<CustomerResponse>builder()
                 .result(customerService.updateCustomer(id, request))
+                .build();
+    }
+    @GetMapping("/profile/{id}")
+    @PostAuthorize("returnObject.result.email == authentication.name")
+    public ApiResponse<CustomerResponse> getInfoById(@PathVariable String id){
+        return ApiResponse.<CustomerResponse>builder()
+                .result(customerService.getInfoById(id))
                 .build();
     }
 }
