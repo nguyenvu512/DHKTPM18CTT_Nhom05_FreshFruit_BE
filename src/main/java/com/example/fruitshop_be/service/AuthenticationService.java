@@ -1,6 +1,7 @@
 package com.example.fruitshop_be.service;
 
 import com.example.fruitshop_be.dto.request.AuthenticationRequest;
+import com.example.fruitshop_be.dto.request.ForgetPasswordRequest;
 import com.example.fruitshop_be.dto.request.IntrospectRequest;
 import com.example.fruitshop_be.dto.request.LogoutRequest;
 import com.example.fruitshop_be.dto.response.AuthenticationResponse;
@@ -27,6 +28,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -43,6 +45,8 @@ public class AuthenticationService {
     AccountRepository accountRepository;
     PasswordEncoder passwordEncoder;
     RedisService redisService;
+    MailService mailService;
+    private static final SecureRandom random = new SecureRandom();
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         Account account = accountRepository.findByUsername(request.getUsername());
@@ -156,6 +160,24 @@ public class AuthenticationService {
 
     private SignedJWT parseToken(String token) throws ParseException {
         return SignedJWT.parse(token);
+    }
+    public void forgetPassword(ForgetPasswordRequest request) {
+        Account account = accountRepository.findByUsername(request.getUsername());
+        if (account == null) {
+            throw new AppException(ErrorCode.NOT_FOUND);
+        }
+        String newPassword = randomForgetPassword();
+        account.setPassword(passwordEncoder.encode(newPassword));
+        accountRepository.save(account);
+        mailService.sendResetPasswordMail(request.getUsername(),newPassword);
+
+    }
+    public static String randomForgetPassword() {
+        StringBuilder sb = new StringBuilder(6);
+        for (int i = 0; i < 6; i++) {
+            sb.append(random.nextInt(10)); // 0–9
+        }
+        return sb.toString();
     }
 
 

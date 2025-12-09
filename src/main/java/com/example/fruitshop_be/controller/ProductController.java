@@ -58,5 +58,13 @@ public class ProductController {
                 .result(products)
                 .build();
     }
+    @GetMapping("/{id}")
+    public ApiResponse<ProductResponse> getProductById(@PathVariable String id) {
+        ProductResponse product = productService.getProductById(id);
+        return ApiResponse.<ProductResponse>builder()
+                .result(product)
+                .build();
+    }
+
 
 }

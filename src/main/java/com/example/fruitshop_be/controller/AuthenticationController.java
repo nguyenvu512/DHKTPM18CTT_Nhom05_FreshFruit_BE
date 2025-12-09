@@ -2,6 +2,7 @@ package com.example.fruitshop_be.controller;
 
 import com.example.fruitshop_be.dto.ApiResponse;
 import com.example.fruitshop_be.dto.request.AuthenticationRequest;
+import com.example.fruitshop_be.dto.request.ForgetPasswordRequest;
 import com.example.fruitshop_be.dto.request.IntrospectRequest;
 import com.example.fruitshop_be.dto.request.LogoutRequest;
 import com.example.fruitshop_be.dto.response.AccountResponse;
@@ -24,6 +25,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.text.ParseException;
@@ -93,5 +95,23 @@ public class AuthenticationController {
                 .build();
 
     }
+    @PostMapping("/forget-password")
+    public ApiResponse<Void> forgetPassword(@RequestBody ForgetPasswordRequest request){
+        authenticationService.forgetPassword(request);
+        return ApiResponse.<Void>builder()
+                .message("New password has been send to your email")
+                .build();
+    }
+    @GetMapping("/debug")
+    public String debugAuth(Authentication authentication) {
+
+        System.out.println("✅ authentication = " + authentication);
+        System.out.println("✅ authentication.getName() = " + authentication.getName());
+        System.out.println("✅ authentication.getPrincipal() = " + authentication.getPrincipal());
+        System.out.println("✅ authorities = " + authentication.getAuthorities());
+
+        return "Check console log";
+    }
+
 }
 
