@@ -5,15 +5,22 @@ import com.example.fruitshop_be.dto.request.OrderDetailRequest;
 import com.example.fruitshop_be.dto.response.OrderResponse;
 import com.example.fruitshop_be.entity.*;
 import com.example.fruitshop_be.enums.ErrorCode;
+import com.example.fruitshop_be.enums.Payment;
+import com.example.fruitshop_be.enums.Status;
 import com.example.fruitshop_be.exception.AppException;
 import com.example.fruitshop_be.mapper.OrderDetailMapper;
 import com.example.fruitshop_be.mapper.OrderMapper;
 import com.example.fruitshop_be.repository.*;
+import com.example.fruitshop_be.vnpay.dto.PaymentRequest;
+import com.example.fruitshop_be.vnpay.dto.PaymentResDto;
+import com.example.fruitshop_be.vnpay.service.PaymentService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,10 +36,65 @@ public class OrderService {
     OrderRepository orderRepository;
     OrderDetailRepository orderDetailRepository;
     OrderDetailMapper orderDetailMapper;
+    CartService cartService;
+    PaymentService paymentService;
 
-    public synchronized OrderResponse createOrder(OrderCreateRequest request) {
+    public List<OrderResponse> getAllOrders() {
 
-        // STEP 1: validate items
+        List<Order> orders = orderRepository.findAll();
+
+        List<OrderResponse> responses = new ArrayList<>();
+
+        for (Order order : orders) {
+            OrderResponse res = orderMapper.toOrderResponse(order);
+
+            // load items
+            List<OrderDetail> details = orderDetailRepository.findByOrder(order);
+
+            res.setItems(
+                    details.stream()
+                            .map(orderDetailMapper::toOrderDetailResponse)
+                            .toList()
+            );
+
+            responses.add(res);
+        }
+
+        return responses;
+    }
+
+    public List<OrderResponse> getOrdersByCustomer(String customerId) {
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_CUSTOMER_NOT_FOUND));
+
+        List<Order> orders = orderRepository.findByCustomer(customer);
+
+        List<OrderResponse> responses = new ArrayList<>();
+
+        for (Order order : orders) {
+
+            OrderResponse res = orderMapper.toOrderResponse(order);
+
+            List<OrderDetail> details = orderDetailRepository.findByOrder(order);
+
+            res.setItems(
+                    details.stream()
+                            .map(orderDetailMapper::toOrderDetailResponse)
+                            .toList()
+            );
+
+            responses.add(res);
+        }
+
+        return responses;
+    }
+
+
+
+    public synchronized OrderResponse createOrder(OrderCreateRequest request, HttpServletRequest httpRequest) throws UnsupportedEncodingException {
+
+    // STEP 1: validate items
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new AppException(ErrorCode.ORDER_EMPTY_ITEMS);
         }
@@ -43,25 +105,29 @@ public class OrderService {
 
         // STEP 3: voucher (optional)
         Voucher voucher = null;
-        if (request.getVoucherId() != null) {
+        if (request.getVoucherId() != null && !request.getVoucherId().toString().isBlank()) {
             voucher = voucherRepository.findById(request.getVoucherId())
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_VOUCHER_NOT_FOUND));
 
-            // kiểm tra tồn kho voucher
             if (voucher.getQuantity() <= 0) {
                 throw new AppException(ErrorCode.VOUCHER_OUT_OF_STOCK);
             }
 
-            // trừ voucher tồn kho
             voucher.setQuantity(voucher.getQuantity() - 1);
             voucherRepository.save(voucher);
         }
+
 
         // STEP 4: create order
         Order order = orderMapper.toOrder(request);
         order.setCustomer(customer);
         order.setVoucher(voucher);
 
+        if (request.getPaymentMethod() == Payment.VN_PAY) {
+            order.setStatus(Status.PENDING); // Chờ thanh toán
+        } else {
+            order.setStatus(Status.COMPLETED); // COD hoặc các phương thức khác
+        }
         Order savedOrder = orderRepository.save(order);
 
         // STEP 5: xử lý từng OrderDetail + kiểm tra tồn kho + trừ tồn kho
@@ -99,6 +165,9 @@ public class OrderService {
 
         orderDetailRepository.saveAll(details);
 
+//        clear card
+        cartService.clearCart(customer.getId());
+
         // STEP 6: build response
         OrderResponse response = orderMapper.toOrderResponse(savedOrder);
 
@@ -107,6 +176,18 @@ public class OrderService {
                         .map(orderDetailMapper::toOrderDetailResponse)
                         .toList()
         );
+
+        // STEP 7: Nếu payment method là VN_PAY, tạo payment URL
+        if (request.getPaymentMethod() == Payment.VN_PAY) {
+            PaymentRequest paymentRequest = PaymentRequest.builder()
+                    .orderID(savedOrder.getId().toString())
+                    .amount(request.getTotalAmount().longValue())
+                    .build();
+
+            PaymentResDto paymentResDto = paymentService.createPayment(httpRequest, paymentRequest);
+            response.setPaymentUrl(paymentResDto.getUrl());
+            response.setPaymentStatus(paymentResDto.getStatus());
+        }
 
         return response;
     }

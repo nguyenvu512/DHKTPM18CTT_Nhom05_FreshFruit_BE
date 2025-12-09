@@ -31,4 +31,12 @@ public class OrderResponse {
     private String voucherId;
 
     private List<OrderDetailResponse> items;
+
+    private String fullName;
+
+    private String phoneNumber;
+
+    String paymentUrl;
+
+    String paymentStatus;
 }

@@ -51,6 +51,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, END_POINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, "/product").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/payment/payment-info").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Thêm filter custom trước BearerTokenAuthenticationFilter

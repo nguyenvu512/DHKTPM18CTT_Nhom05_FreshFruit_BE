@@ -1,5 +1,5 @@
 package com.example.fruitshop_be.enums;
 
 public enum Payment {
-    COD,BANKING
+    DIRECT_PAYMENT,VN_PAY
 }
