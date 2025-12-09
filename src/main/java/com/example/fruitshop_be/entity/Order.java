@@ -19,14 +19,20 @@ public class Order {
     String id;
     LocalDateTime orderDate;
     double totalAmount;
+
     @Enumerated(EnumType.STRING)
     Payment paymentMethod;
+
     String shippingAddress;
     @Enumerated(EnumType.STRING)
     Status status;
+
     @ManyToOne
     Customer customer;
     @ManyToOne
     Voucher voucher;
+
+    String fullName;
+    String phoneNumber;
 
 }

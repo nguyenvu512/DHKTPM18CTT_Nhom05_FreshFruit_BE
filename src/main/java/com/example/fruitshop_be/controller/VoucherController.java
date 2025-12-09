@@ -45,5 +45,10 @@ public class VoucherController {
         return template.opsForValue().get("key");
     }
 
-
+    @GetMapping("/{id}")
+    public ApiResponse<VoucherResponse> getVoucherById(@PathVariable String id) {
+        return ApiResponse.<VoucherResponse>builder()
+                .result(voucherService.getVoucherById(id))
+                .build();
+    }
 }
