@@ -38,17 +38,17 @@ public class ProductService {
 //        productRepository.save(product);
 //    }
 
-    public ProductResponse createProduct(ProductCreateRequest request) {
+        public ProductResponse createProduct(ProductCreateRequest request) {
 
-        Category category = categoryRepository.findById(request.getCategory())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-        Product product = productRepository.save(productMapper.toProduct(request));
-        product.setCategory(category);
-        List<ProductImage> images = cloudinaryService.uploadMultipleFiles(request.getImages(), product);
-        product.setImages(images);
-        productRepository.save(product);
-        return productMapper.toProductResponse(product);
-    }
+            Category category = categoryRepository.findById(request.getCategory())
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+            Product product = productRepository.save(productMapper.toProduct(request));
+            product.setCategory(category);
+            List<ProductImage> images = cloudinaryService.uploadMultipleFiles(request.getImages(), product);
+            product.setImages(images);
+            productRepository.save(product);
+            return productMapper.toProductResponse(product);
+        }
     public void deleteProduct(String productId) {
         Product product = productRepository.findById(productId).orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         product.getImages().forEach(image->{
@@ -93,6 +93,12 @@ public class ProductService {
                 .map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
+    public ProductResponse getProductById(String id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        return productMapper.toProductResponse(product);
+    }
+
 
 
 
