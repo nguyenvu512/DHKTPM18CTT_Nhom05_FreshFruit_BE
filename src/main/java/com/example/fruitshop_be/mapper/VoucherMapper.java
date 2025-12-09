@@ -11,5 +11,6 @@ import org.mapstruct.MappingTarget;
 public interface VoucherMapper {
     Voucher toVoucher(VoucherCreateRequest request);
     VoucherResponse toVoucherResponse(Voucher voucher);
-    void  updateVoucher(@MappingTarget Voucher voucher, VoucherUpdateRequest request);
+    void updateVoucher(@MappingTarget Voucher voucher, VoucherUpdateRequest request);
 }
+
