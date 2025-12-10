@@ -3,6 +3,7 @@ package com.example.fruitshop_be.controller;
 import com.example.fruitshop_be.dto.ApiResponse;
 import com.example.fruitshop_be.dto.request.CustomerCreateRequest;
 import com.example.fruitshop_be.dto.request.OrderCreateRequest;
+import com.example.fruitshop_be.dto.request.UpdateOrderStatusRequest;
 import com.example.fruitshop_be.dto.response.CustomerResponse;
 import com.example.fruitshop_be.dto.response.OrderResponse;
 import com.example.fruitshop_be.service.OrderService;
@@ -50,6 +51,13 @@ public class OrderController {
 
         return ApiResponse.<OrderResponse>builder()
                 .result(response)
+                .build();
+    }
+
+    @PutMapping("/update-status")
+    public ApiResponse<OrderResponse> updateOrderStatus(@RequestBody UpdateOrderStatusRequest request) {
+        return ApiResponse.<OrderResponse>builder()
+                .result(orderService.updateOrderStatus(request))
                 .build();
     }
 }

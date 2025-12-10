@@ -104,7 +104,6 @@ public class PaymentService {
         if ("00".equals(code)) {
             var order = orderRepository.findById(orderID).orElse(null);
             if (order != null) {
-                order.setStatus(Status.COMPLETED);
                 orderRepository.save(order);
             }
             return true;

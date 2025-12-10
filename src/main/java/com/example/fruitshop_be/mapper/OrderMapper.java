@@ -20,5 +20,7 @@ public interface OrderMapper {
     @Mapping(target = "voucherId", source = "voucher.id")
     @Mapping(target = "fullName", source = "fullName")
     @Mapping(target = "phoneNumber", source = "phoneNumber")
+    @Mapping(target = "errorNote", source = "errorNote")
+    @Mapping(target = "shippingDate", source = "shippingDate")
     OrderResponse toOrderResponse(Order order);
 }
