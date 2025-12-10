@@ -35,4 +35,7 @@ public class Order {
     String fullName;
     String phoneNumber;
 
+    String errorNote;
+
+    LocalDateTime shippingDate;
 }

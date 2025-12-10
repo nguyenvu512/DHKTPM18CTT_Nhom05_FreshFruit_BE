@@ -39,4 +39,8 @@ public class OrderResponse {
     String paymentUrl;
 
     String paymentStatus;
+
+    String errorNote;
+
+    LocalDateTime shippingDate;
 }

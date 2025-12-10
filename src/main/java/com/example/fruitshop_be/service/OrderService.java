@@ -2,6 +2,7 @@ package com.example.fruitshop_be.service;
 
 import com.example.fruitshop_be.dto.request.OrderCreateRequest;
 import com.example.fruitshop_be.dto.request.OrderDetailRequest;
+import com.example.fruitshop_be.dto.request.UpdateOrderStatusRequest;
 import com.example.fruitshop_be.dto.response.OrderResponse;
 import com.example.fruitshop_be.entity.*;
 import com.example.fruitshop_be.enums.ErrorCode;
@@ -21,6 +22,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +40,55 @@ public class OrderService {
     OrderDetailMapper orderDetailMapper;
     CartService cartService;
     PaymentService paymentService;
+    MailService mailService;
+
+    public OrderResponse updateOrderStatus(UpdateOrderStatusRequest request) {
+        System.out.println(request.getOrderId());
+        Order order = orderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+
+        order.setStatus(request.getStatus());
+        if(request.getStatus().equals(Status.FAILED)){
+            order.setErrorNote(request.getDescription());
+        }
+        if(request.getStatus().equals(Status.DELIVERED)){
+            order.setShippingDate(LocalDateTime.now());
+        }
+        Order savedOrder = orderRepository.save(order);
+        try {
+            switch (request.getStatus()) {
+                case CONFIRMED:
+                    // Khi Admin xác nhận -> Gửi mail "Đang xử lý"
+                    mailService.sendOrderProcessingMail(request.getUsername(), order.getFullName(), order.getId());
+                    break;
+
+                case SHIPPING:
+                    mailService.sendOrderShippingMail(request.getUsername(), order.getFullName(), order.getId());
+                    break;
+
+                case DELIVERED:
+                    // Khi giao thành công -> Gửi mail cảm ơn
+                    mailService.sendOrderDeliveredMail(request.getUsername(), order.getFullName(), order.getId());
+                    break;
+
+                case FAILED:
+                    // Khi thất bại -> Gửi mail kèm lý do (biến 'note')
+                    String reason = (request.getDescription() != null && !request.getDescription().isEmpty()) ? request.getDescription() : "Lỗi không xác định";
+                    mailService.sendOrderFailedMail(request.getUsername(), order.getFullName(), order.getId(), reason);
+                    break;
+
+                // Các trạng thái khác như PENDING, COMPLETED có thể không cần gửi mail
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            // Log lỗi nhưng không ném exception để tránh làm lỗi transaction lưu đơn hàng
+            System.err.println("Lỗi gửi email: " + e.getMessage());
+        }
+
+        // 5. Trả về kết quả
+        return orderMapper.toOrderResponse(savedOrder);
+    }
 
     public List<OrderResponse> getAllOrders() {
 
@@ -94,7 +145,7 @@ public class OrderService {
 
     public synchronized OrderResponse createOrder(OrderCreateRequest request, HttpServletRequest httpRequest) throws UnsupportedEncodingException {
 
-    // STEP 1: validate items
+        // STEP 1: validate items
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new AppException(ErrorCode.ORDER_EMPTY_ITEMS);
         }
@@ -123,11 +174,6 @@ public class OrderService {
         order.setCustomer(customer);
         order.setVoucher(voucher);
 
-        if (request.getPaymentMethod() == Payment.VN_PAY) {
-            order.setStatus(Status.PENDING); // Chờ thanh toán
-        } else {
-            order.setStatus(Status.COMPLETED); // COD hoặc các phương thức khác
-        }
         Order savedOrder = orderRepository.save(order);
 
         // STEP 5: xử lý từng OrderDetail + kiểm tra tồn kho + trừ tồn kho
